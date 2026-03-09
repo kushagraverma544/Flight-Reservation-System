@@ -1,0 +1,37 @@
+package com.flight.reservation.entity;
+
+import com.flight.reservation.constants.UserRolesEnum;
+import com.flight.reservation.constants.WorkingStatusEnum;
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserEntity extends BaseAudit {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 150)
+    private String email;
+
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRolesEnum role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private WorkingStatusEnum active;
+}
