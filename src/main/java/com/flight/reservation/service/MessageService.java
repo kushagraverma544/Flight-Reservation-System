@@ -34,10 +34,14 @@ public class MessageService {
    * @return - Message string with replaced parameters
    */
   public String getMessage(String messageKey, Object[] params) {
-    return messageSource.getMessage(
-        messageKey,
-        params,
-        LocaleContextHolder.getLocale());
+    try {
+      return messageSource.getMessage(
+          messageKey,
+          params != null ? params : new Object[]{},
+          LocaleContextHolder.getLocale());
+    } catch (Exception e) {
+      return messageKey; // fallback
+    }
   }
 
   /**
@@ -66,7 +70,7 @@ public class MessageService {
   public String getMessageWithDefault(String messageKey, Object[] params, String defaultValue) {
     return messageSource.getMessage(
         messageKey,
-        params,
+        params != null ? params : new Object[] {},
         defaultValue,
         LocaleContextHolder.getLocale());
   }

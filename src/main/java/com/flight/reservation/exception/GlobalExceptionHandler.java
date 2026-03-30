@@ -1,8 +1,12 @@
 package com.flight.reservation.exception;
 
+import com.flight.reservation.constants.ErrorCode;
 import com.flight.reservation.constants.MessageKeys;
 import com.flight.reservation.dto.failureResponse.ErrorResponseDto;
 import com.flight.reservation.service.MessageService;
+
+import java.time.LocalDateTime;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,8 +34,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ErrorResponseDto errorResponse = ErrorResponseDto.builder()
         .message(ex.getMessage())
         .status(ex.getStatusCode())
-        .errorCode(ex.getErrorCode() != null ? ex.getErrorCode() : "FLIGHT_RESERVATION_ERROR")
-        .timestamp(System.currentTimeMillis())
+        .errorCode(ErrorCode.FLIGHT_RESERVATION_ERROR)
+        .timestamp(LocalDateTime.now())
         .build();
 
     return new ResponseEntity<>(errorResponse, HttpStatus.valueOf(ex.getStatusCode()));
@@ -44,12 +48,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<ErrorResponseDto> handleEntityNotFoundException(
       EntityNotFoundException ex,
       WebRequest request) {
-
+k
     ErrorResponseDto errorResponse = ErrorResponseDto.builder()
         .message(messageService.getMessage(MessageKeys.ERROR_RESOURCE_NOT_FOUND))
         .status(HttpStatus.NOT_FOUND.value())
-        .errorCode("ENTITY_NOT_FOUND")
-        .timestamp(System.currentTimeMillis())
+        .errorCode(ErrorCode.NOT_FOUND)
+        .timestamp(LocalDateTime.now())
         .build();
 
     return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
@@ -66,8 +70,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ErrorResponseDto errorResponse = ErrorResponseDto.builder()
         .message(ex.getMessage())
         .status(HttpStatus.BAD_REQUEST.value())
-        .errorCode("VALIDATION_ERROR")
-        .timestamp(System.currentTimeMillis())
+        .errorCode(ErrorCode.VALIDATION_ERROR)
+        .timestamp(LocalDateTime.now())
         .build();
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
@@ -84,8 +88,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ErrorResponseDto errorResponse = ErrorResponseDto.builder()
         .message(messageService.getMessage(MessageKeys.ERROR_INTERNAL_SERVER_ERROR))
         .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-        .errorCode("INTERNAL_SERVER_ERROR")
-        .timestamp(System.currentTimeMillis())
+        .errorCode(ErrorCode.INTERNAL_SERVER_ERROR)
+        .timestamp(LocalDateTime.now())
         .build();
 
     ex.printStackTrace();

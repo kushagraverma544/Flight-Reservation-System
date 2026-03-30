@@ -10,7 +10,10 @@ import com.flight.reservation.exception.EntityNotFoundException;
 import com.flight.reservation.exception.ValidationException;
 import com.flight.reservation.repository.UserRepository;
 import com.flight.reservation.service.UserService;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,229 +21,154 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 @Transactional
 public class UserServiceImpl implements UserService {
 
-  private final UserRepository userRepository;
-  private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-  public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-    this.userRepository = userRepository;
-    this.passwordEncoder = passwordEncoder;
-  }
+    // ================= REGISTER =================
 
-  /**
-   * Register a new user with validation and password encoding
-   */
-  @Override
-  public UserResponseDto registerUser(UserRequestDto userRequestDto) {
-    log.info("Attempting to register user with email: {}", userRequestDto.getEmail());
+    @Override
+    public UserResponseDto registerUser(UserRequestDto dto) {
+        log.info("Registering user with email: {}", dto.getEmail());
+        String email = dto.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(email)) {
+            throw new ValidationException(
+                    "email",
+                    "Email already registered",
+                    MessageKeys.ERROR_USER_EMAIL_ALREADY_EXISTS
+            );
+        }
+        UserRolesEnum role = parseRole(dto.getRole());
 
-    // Validate request
-    validateUserRequest(userRequestDto);
+        UserEntity user = UserEntity.builder()
+                .name(dto.getName().trim())
+                .email(email)
+                .password(passwordEncoder.encode(dto.getPassword()))
+                .role(role)
+                .active(WorkingStatusEnum.ACTIVE)
+                .build();
 
-    // Check if email already exists
-    if (isUserExists(userRequestDto.getEmail())) {
-      log.warn("Registration failed: Email {} already exists", userRequestDto.getEmail());
-      throw new ValidationException(
-          "email",
-          "Email already registered",
-          MessageKeys.ERROR_USER_EMAIL_ALREADY_EXISTS);
+        UserEntity savedUser = userRepository.save(user);
+
+        log.info("User created with ID: {}", savedUser.getId());
+
+        return mapToResponseDto(savedUser);
     }
 
-    try {
-      // Create new user entity
-      UserEntity userEntity = UserEntity.builder()
-          .name(userRequestDto.getName())
-          .email(userRequestDto.getEmail())
-          .password(passwordEncoder.encode(userRequestDto.getPassword()))
-          .role(UserRolesEnum.valueOf(userRequestDto.getRole().toUpperCase()))
-          .active(WorkingStatusEnum.ACTIVE)
-          .build();
+    // ================= GET =================
 
-      // Save user to database
-      UserEntity savedUser = userRepository.save(userEntity);
-      log.info("User registered successfully with ID: {}", savedUser.getId());
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponseDto getUserById(Long userId) {
 
-      // Convert to response DTO
-      return mapToResponseDto(savedUser);
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User", String.valueOf(userId)));
 
-    } catch (Exception e) {
-      log.error("Error during user registration: {}", e.getMessage(), e);
-      throw new RuntimeException("Error registering user", e);
-    }
-  }
-
-  /**
-   * Validate user registration request
-   */
-  private void validateUserRequest(UserRequestDto userRequestDto) {
-    // Validate name
-    if (userRequestDto.getName() == null || userRequestDto.getName().trim().isEmpty()) {
-      throw new ValidationException("name", "Name cannot be empty", MessageKeys.ERROR_VALIDATION_FAILED);
+        return mapToResponseDto(user);
     }
 
-    // Validate email format
-    if (userRequestDto.getEmail() == null || !isValidEmail(userRequestDto.getEmail())) {
-      throw new ValidationException("email", "Invalid email format", MessageKeys.ERROR_VALIDATION_FAILED);
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponseDto getUserByEmail(String email) {
+
+        UserEntity user = userRepository.findByEmail(email.trim().toLowerCase())
+                .orElseThrow(() -> new EntityNotFoundException("User", email));
+
+        return mapToResponseDto(user);
     }
 
-    // Validate password
-    if (userRequestDto.getPassword() == null || userRequestDto.getPassword().length() < 6) {
-      throw new ValidationException("password", "Password must be at least 6 characters",
-          MessageKeys.ERROR_VALIDATION_FAILED);
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isUserExists(String email) {
+        return userRepository.existsByEmail(email.trim().toLowerCase());
     }
 
-    // Validate role
-    if (userRequestDto.getRole() == null || userRequestDto.getRole().trim().isEmpty()) {
-      throw new ValidationException("role", "Role cannot be empty", MessageKeys.ERROR_VALIDATION_FAILED);
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UserEntity> findUserById(Long userId) {
+        return userRepository.findById(userId);
     }
 
-    // Check if role is valid
-    try {
-      UserRolesEnum.valueOf(userRequestDto.getRole().toUpperCase());
-    } catch (IllegalArgumentException e) {
-      throw new ValidationException("role", "Invalid role", MessageKeys.ERROR_VALIDATION_FAILED);
-    }
-  }
-
-  /**
-   * Validate email format
-   */
-  private boolean isValidEmail(String email) {
-    String emailRegex = "^[A-Za-z0-9+_.-]+@+[A-Za-z0-9.-]+$";
-    return email.matches(emailRegex);
-  }
-
-  /**
-   * Get user by ID
-   */
-  @Override
-  @Transactional(readOnly = true)
-  public UserResponseDto getUserById(Long userId) {
-    log.info("Fetching user with ID: {}", userId);
-    UserEntity userEntity = userRepository.findById(userId)
-        .orElseThrow(() -> {
-          log.warn("User not found with ID: {}", userId);
-          return new EntityNotFoundException("User", String.valueOf(userId));
-        });
-    return mapToResponseDto(userEntity);
-  }
-
-  /**
-   * Get user by email
-   */
-  @Override
-  @Transactional(readOnly = true)
-  public UserResponseDto getUserByEmail(String email) {
-    log.info("Fetching user with email: {}", email);
-    UserEntity userEntity = userRepository.findByEmail(email)
-        .orElseThrow(() -> {
-          log.warn("User not found with email: {}", email);
-          return new EntityNotFoundException("User", email);
-        });
-    return mapToResponseDto(userEntity);
-  }
-
-  /**
-   * Check if user exists by email
-   */
-  @Override
-  @Transactional(readOnly = true)
-  public boolean isUserExists(String email) {
-    return userRepository.existsByEmail(email);
-  }
-
-  /**
-   * Find user entity by ID
-   */
-  @Override
-  @Transactional(readOnly = true)
-  public Optional<UserEntity> findUserById(Long userId) {
-    return userRepository.findById(userId);
-  }
-
-  /**
-   * Find user entity by email
-   */
-  @Override
-  @Transactional(readOnly = true)
-  public Optional<UserEntity> findUserByEmail(String email) {
-    return userRepository.findByEmail(email);
-  }
-
-  /**
-   * Update user
-   */
-  @Override
-  public UserResponseDto updateUser(Long userId, UserRequestDto userRequestDto) {
-    log.info("Updating user with ID: {}", userId);
-
-    UserEntity userEntity = userRepository.findById(userId)
-        .orElseThrow(() -> {
-          log.warn("User not found with ID: {}", userId);
-          return new EntityNotFoundException("User", String.valueOf(userId));
-        });
-
-    // Update name if provided
-    if (userRequestDto.getName() != null && !userRequestDto.getName().trim().isEmpty()) {
-      userEntity.setName(userRequestDto.getName());
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UserEntity> findUserByEmail(String email) {
+        return userRepository.findByEmail(email.trim().toLowerCase());
     }
 
-    // Update password if provided
-    if (userRequestDto.getPassword() != null && !userRequestDto.getPassword().isEmpty()) {
-      if (userRequestDto.getPassword().length() < 6) {
-        throw new ValidationException("password", "Password must be at least 6 characters",
-            MessageKeys.ERROR_VALIDATION_FAILED);
-      }
-      userEntity.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
+    // ================= UPDATE =================
+    @Override
+    public UserResponseDto updateUser(Long userId, UserRequestDto dto) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User", String.valueOf(userId)));
+
+        // Name
+        if (dto.getName() != null && !dto.getName().trim().isEmpty()) {
+            user.setName(dto.getName().trim());
+        }
+        // Password
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            if (dto.getPassword().length() < 6) {
+                throw new ValidationException(
+                        "password",
+                        "Password must be at least 6 characters",
+                        MessageKeys.ERROR_VALIDATION_FAILED
+                );
+            }
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+        // Role
+        if (dto.getRole() != null && !dto.getRole().isBlank()) {
+            user.setRole(parseRole(dto.getRole()));
+        }
+
+        UserEntity updatedUser = userRepository.save(user);
+
+        log.info("User updated with ID: {}", userId);
+
+        return mapToResponseDto(updatedUser);
     }
 
-    // Update role if provided
-    if (userRequestDto.getRole() != null && !userRequestDto.getRole().trim().isEmpty()) {
-      try {
-        userEntity.setRole(UserRolesEnum.valueOf(userRequestDto.getRole().toUpperCase()));
-      } catch (IllegalArgumentException e) {
-        throw new ValidationException("role", "Invalid role", MessageKeys.ERROR_VALIDATION_FAILED);
-      }
+    // ================= DELETE (SOFT DELETE) =================
+    @Override
+    public void deleteUser(Long userId) {
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User", String.valueOf(userId)));
+
+        user.setActive(WorkingStatusEnum.INACTIVE);
+
+        userRepository.save(user);
+
+        log.info("User soft deleted with ID: {}", userId);
     }
 
-    UserEntity updatedUser = userRepository.save(userEntity);
-    log.info("User updated successfully with ID: {}", userId);
+    // ================= HELPER METHODS =================
 
-    return mapToResponseDto(updatedUser);
-  }
+    private UserRolesEnum parseRole(String role) {
+        try {
+            return UserRolesEnum.valueOf(role.trim().toUpperCase());
+        } catch (Exception e) {
+            throw new ValidationException(
+                    "role",
+                    "Invalid role",
+                    MessageKeys.ERROR_VALIDATION_FAILED
+            );
+        }
+    }
 
-  /**
-   * Delete user by ID
-   */
-  @Override
-  public void deleteUser(Long userId) {
-    log.info("Deleting user with ID: {}", userId);
-
-    UserEntity userEntity = userRepository.findById(userId)
-        .orElseThrow(() -> {
-          log.warn("User not found with ID: {}", userId);
-          return new EntityNotFoundException("User", String.valueOf(userId));
-        });
-
-    userRepository.delete(userEntity);
-    log.info("User deleted successfully with ID: {}", userId);
-  }
-
-  /**
-   * Map UserEntity to UserResponseDto
-   */
-  private UserResponseDto mapToResponseDto(UserEntity userEntity) {
-    return UserResponseDto.builder()
-        .id(userEntity.getId())
-        .name(userEntity.getName())
-        .email(userEntity.getEmail())
-        .role(userEntity.getRole().name())
-        .active(userEntity.getActive().name())
-        .createdAt(userEntity.getCreatedAt())
-        .createdBy(userEntity.getCreatedBy())
-        .build();
-  }
+    private UserResponseDto mapToResponseDto(UserEntity user) {
+        return UserResponseDto.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .active(user.getActive().name())
+                .createdAt(user.getCreatedAt())
+                .createdBy(user.getCreatedBy())
+                .build();
+    }
 }

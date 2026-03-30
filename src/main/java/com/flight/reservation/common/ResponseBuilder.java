@@ -1,19 +1,22 @@
 package com.flight.reservation.common;
 
+import com.flight.reservation.constants.ErrorCode;
 import com.flight.reservation.dto.failureResponse.ErrorResponseDto;
 import com.flight.reservation.dto.successResponse.SuccessResponseDto;
 import com.flight.reservation.service.MessageService;
+
+import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDateTime;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class ResponseBuilder {
 
   private final MessageService messageService;
-
-  public ResponseBuilder(MessageService messageService) {
-    this.messageService = messageService;
-  }
 
   /**
    * Build success response with message from properties
@@ -29,7 +32,7 @@ public class ResponseBuilder {
         .message(message)
         .data(data)
         .status(status.value())
-        .timestamp(System.currentTimeMillis())
+        .timestamp(LocalDateTime.now())
         .build();
   }
 
@@ -47,7 +50,7 @@ public class ResponseBuilder {
         .message(customMessage)
         .data(data)
         .status(status.value())
-        .timestamp(System.currentTimeMillis())
+        .timestamp(LocalDateTime.now())
         .build();
   }
 
@@ -91,13 +94,13 @@ public class ResponseBuilder {
    * @param status     - HTTP status code
    * @return - ErrorResponseDto
    */
-  public ErrorResponseDto buildErrorResponse(String messageKey, String errorCode, HttpStatus status) {
+  public ErrorResponseDto buildErrorResponse(String messageKey, ErrorCode errorCode, HttpStatus status) {
     String message = messageService.getMessage(messageKey);
     return ErrorResponseDto.builder()
         .message(message)
         .status(status.value())
         .errorCode(errorCode)
-        .timestamp(System.currentTimeMillis())
+        .timestamp(LocalDateTime.now())
         .build();
   }
 
@@ -109,13 +112,13 @@ public class ResponseBuilder {
    * @param status        - HTTP status code
    * @return - ErrorResponseDto
    */
-  public ErrorResponseDto buildErrorResponseWithCustomMessage(String customMessage, String errorCode,
+  public ErrorResponseDto buildErrorResponseWithCustomMessage(String customMessage, ErrorCode errorCode,
       HttpStatus status) {
     return ErrorResponseDto.builder()
         .message(customMessage)
         .status(status.value())
         .errorCode(errorCode)
-        .timestamp(System.currentTimeMillis())
+        .timestamp(LocalDateTime.now())
         .build();
   }
 
@@ -126,7 +129,7 @@ public class ResponseBuilder {
    * @return - ErrorResponseDto
    */
   public ErrorResponseDto buildBadRequest(String messageKey) {
-    return buildErrorResponse(messageKey, "BAD_REQUEST", HttpStatus.BAD_REQUEST);
+    return buildErrorResponse(messageKey, ErrorCode.BAD_REQUEST, HttpStatus.BAD_REQUEST);
   }
 
   /**
@@ -136,7 +139,7 @@ public class ResponseBuilder {
    * @return - ErrorResponseDto
    */
   public ErrorResponseDto buildNotFound(String messageKey) {
-    return buildErrorResponse(messageKey, "NOT_FOUND", HttpStatus.NOT_FOUND);
+    return buildErrorResponse(messageKey, ErrorCode.NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   /**
@@ -146,7 +149,7 @@ public class ResponseBuilder {
    * @return - ErrorResponseDto
    */
   public ErrorResponseDto buildUnauthorized(String messageKey) {
-    return buildErrorResponse(messageKey, "UNAUTHORIZED", HttpStatus.UNAUTHORIZED);
+    return buildErrorResponse(messageKey, ErrorCode.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
   }
 
   /**
@@ -156,7 +159,7 @@ public class ResponseBuilder {
    * @return - ErrorResponseDto
    */
   public ErrorResponseDto buildForbidden(String messageKey) {
-    return buildErrorResponse(messageKey, "FORBIDDEN", HttpStatus.FORBIDDEN);
+    return buildErrorResponse(messageKey, ErrorCode.FORBIDDEN, HttpStatus.FORBIDDEN);
   }
 
   /**
@@ -166,6 +169,6 @@ public class ResponseBuilder {
    * @return - ErrorResponseDto
    */
   public ErrorResponseDto buildInternalServerError(String messageKey) {
-    return buildErrorResponse(messageKey, "INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
+    return buildErrorResponse(messageKey, ErrorCode.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }

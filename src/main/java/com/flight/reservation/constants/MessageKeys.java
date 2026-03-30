@@ -8,6 +8,7 @@ public class MessageKeys {
   public static final String SUCCESS_USER_DELETED = "success.user.deleted";
   public static final String SUCCESS_USER_LOGIN = "success.user.login";
   public static final String SUCCESS_USER_LOGOUT = "success.user.logout";
+  public static final String SUCCESS_USER_FOUND = "success.user.found";
 
   public static final String SUCCESS_AIRLINE_CREATED = "success.airline.created";
   public static final String SUCCESS_AIRLINE_UPDATED = "success.airline.updated";
